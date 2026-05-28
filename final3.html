@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        button {
+            padding: 10px;
+            margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #4caf50;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #attendanceResult {
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Attendance Report</h2>
+        <form id="attendanceForm">
+            <label for="ID">ID:</label>
+            <input type="text" id="ID" required>
+            <label for="fromDate">From Date:</label>
+            <input type="date" id="fromDate" required>
+            <label for="toDate">To Date:</label>
+            <input type="date" id="toDate" required>
+            <button type="button" onclick="fetchAttendance()">Fetch Attendance</button>
+            <button type="button" onclick="exportToExcel()">Export to Excel</button>
+        </form>
+        <div id="attendanceResult"></div>
+    </div>
+
+    <script>
+        let attendanceData = []; // To store fetched attendance data
+
+        function fetchAttendance() {
+            const ID = document.getElementById('ID').value;
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+
+            fetch(`http://localhost:7000/attendance?ID=${ID}&fromdate=${fromDate}&todate=${toDate}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch attendance');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    attendanceData = data; // Store fetched data
+                    displayAttendanceData(attendanceData);
+                })
+                .catch(error => {
+                    console.error('Error fetching attendance:', error);
+                    const attendanceResult = document.getElementById('attendanceResult');
+                    attendanceResult.innerHTML = 'Error fetching attendance';
+                });
+        }
+
+        function displayAttendanceData(data) {
+            const attendanceResult = document.getElementById('attendanceResult');
+            attendanceResult.innerHTML = '';
+            if (data.length === 0) {
+                attendanceResult.innerHTML = 'No attendance data found';
+            } else {
+                const table = document.createElement('table');
+                const headerRow = document.createElement('tr');
+                // Add table headers
+                ['ID', 'Date', 'Day', 'Name', 'Company Name', 'In Time', 'Out Time'].forEach(headerText => {
+                    const th = document.createElement('th');
+                    th.textContent = headerText;
+                    headerRow.appendChild(th);
+                });
+                table.appendChild(headerRow);
+
+                // Add data rows
+                data.forEach(entry => {
+                    const tr = document.createElement('tr');
+                    ['ID', 'Date', 'Day', 'Name', 'CompanyName', 'InTime', 'OutTime'].forEach(columnKey => {
+                        const td = document.createElement('td');
+                        td.textContent = entry[columnKey];
+                        tr.appendChild(td);
+                    });
+                    table.appendChild(tr);
+                });
+                attendanceResult.appendChild(table);
+            }
+        }
+
+        function exportToExcel() {
+    if (attendanceData.length === 0) {
+        alert('No data to export.');
+        return;
+    }
+
+    // Prepend headings to the data
+    const headings = ['ID', 'Date', 'Day','Name', 'CompanyName', 'InTime', 'OutTime'];
+    const dataWithHeadings = [headings, ...attendanceData.map(row => Object.values(row).join(','))];
+
+    // Convert data to EXCEL format
+    const xlsContent = "data:text/csv;charset=utf-8," + dataWithHeadings.join("\n");
+    
+    // Create a download link and trigger the download
+    const encodedUri = encodeURI(xlsContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "attendance_data.csv");
+    document.body.appendChild(link); // Required for Firefox
+    link.click();
+}
+
+    </script>
+</body>
+</html>
